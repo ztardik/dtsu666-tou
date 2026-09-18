@@ -2,7 +2,9 @@
 
 The runtime package: reads one DTSU666 over Modbus RTU, publishes to MQTT and
 persists to SQLite.  See the repository `README.md` for installation and
-configuration; this file is a map of the code.
+configuration; this file is a map of the code.  The Croatian utility and tariff
+terms used throughout (HEP, VT/NT) are explained under *Terminology* in the
+repository README.
 
 ## Run
 

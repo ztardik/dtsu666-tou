@@ -12,6 +12,41 @@ built in.
 > for installation, the configuration reference, failure handling, monitoring
 > and the recovery playbook.
 
+## Terminology: HEP, VT and NT
+
+This logger targets a Croatian household supply, so three local terms recur
+throughout the code, the database schema and the MQTT payloads.
+
+- **HEP** — *Hrvatska elektroprivreda*, the Croatian state-owned electricity
+  utility: the supplier and distributor that reads the official meter and
+  issues the invoice.
+- **VT / NT** — *viša tarifa* / *niža tarifa* ("higher tariff" / "lower
+  tariff"), the two price bands of a Croatian dual-tariff (*dvotarifno*)
+  supply.  The same kWh costs materially less during NT, so the two bands are
+  metered and priced separately.  The changeover is a fixed local wall-clock
+  schedule that shifts with daylight saving:
+
+| season (`Europe/Zagreb`) | VT — higher price | NT — lower price |
+|--------------------------|-------------------|------------------|
+| summer — DST active      | 08:00 – 22:00     | 22:00 – 08:00    |
+| winter — DST inactive    | 07:00 – 21:00     | 21:00 – 07:00    |
+
+The season follows the EU-wide DST changeover, so the tariff boundary is not a
+fixed UTC offset: `dtsu666_tou/tariff.py` re-derives the summer/winter window
+for each calendar day from `zoneinfo`, and `allocate_interval` splits every
+interval proportionally to its wall-clock time in each band.  Every stored
+reading, daily aggregate and period summary is therefore already broken out
+into `vt_kwh` and `nt_kwh`, and `pricing.py` prices each band with its own rate
+from `tariffs.ini`.
+
+The DTSU666 is a **private sub-meter** — it instruments the same supply, but
+HEP bills from *its* meter, not from this one.  The two drift apart over time
+(rounding, a meter swap, an outage, a missed reading), and reconciling that
+drift is what the HEP reference feature is for: you supply the official VT/NT
+counters from a photo of the HEP meter, and the period summaries are rebased
+onto them (see *Manual corrections*).
+
+
 ## Quick start
 
 ```bash
