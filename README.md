@@ -178,3 +178,8 @@ journald logging, and a status entity for the meter.
 - A "measured" allocation requires a gap of ≤ 120 s and a single tariff at
   both ends of the interval.
 - The DTSU666 reports registers as IEEE-754 float32 in big-endian word order.
+
+## Licence
+
+Released under the GNU General Public License v3.0 — see [`LICENSE`](LICENSE).
+
