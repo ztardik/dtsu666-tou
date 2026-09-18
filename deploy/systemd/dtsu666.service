@@ -1,0 +1,60 @@
+[Unit]
+Description=CHINT DTSU666 energy logger (Modbus RTU to MQTT)
+Documentation=file:/opt/dtsu666/app/README.md
+# network-online: the MQTT broker must be reachable for the first publish.
+# time-sync: tariff/period accounting needs a correct clock.
+# dev-ttyUSB0.device: ordering only - the adapter is deliberately NOT
+# required, because the logger re-opens the serial port automatically when
+# it is unplugged and plugged back in.
+After=network-online.target time-sync.target dev-ttyUSB0.device
+Wants=network-online.target time-sync.target
+# Keep restarting forever (a flapping USB adapter must not exhaust the limit).
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+NotifyAccess=main
+User=dtsu666
+Group=dtsu666
+SupplementaryGroups=dialout
+WorkingDirectory=/opt/dtsu666/etc
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+# The working directory is the configuration directory (secrets.ini,
+# tariffs.ini and dtsu666.conf are resolved relative to it), so the package
+# must be found through PYTHONPATH.
+Environment=PYTHONPATH=/opt/dtsu666/app
+ExecStart=/opt/dtsu666/venv/bin/python -m dtsu666_tou --db /opt/dtsu666/var/dtsu666_energy.db
+
+# The process must report WATCHDOG=1 every 30 s (WatchdogSec / 2) or systemd
+# considers it hung and restarts it.  This is what turns a silently wedged
+# process into a visible, recovered failure.
+WatchdogSec=60
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+KillMode=mixed
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dtsu666
+
+# ---- hardening (the service never needs root) ----------------------------
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/dtsu666/var
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target

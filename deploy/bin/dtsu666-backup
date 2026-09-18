@@ -1,0 +1,39 @@
+#!/bin/sh
+# dtsu666-backup - create a consistent, verifiable backup bundle.
+#
+# Captures the database through the SQLite online-backup API (safe on a live
+# WAL database), plus configuration, application code and recent audit
+# reports, into a single tar.gz with a SHA-256 manifest.
+#
+# Environment overrides: DTSU666_APP_DIR DTSU666_ETC_DIR DTSU666_VAR_DIR
+#   DTSU666_DB DTSU666_SECRETS DTSU666_TARIFFS DTSU666_BACKUP_DIR
+#   DTSU666_AUDIT_DIR DTSU666_PYTHON
+
+set -eu
+
+APP_DIR="${DTSU666_APP_DIR:-/opt/dtsu666/app}"
+ETC_DIR="${DTSU666_ETC_DIR:-/opt/dtsu666/etc}"
+VAR_DIR="${DTSU666_VAR_DIR:-/opt/dtsu666/var}"
+SCRIPT_NAME="dtsu666_backup.py"
+
+if [ ! -f "$APP_DIR/deploy/$SCRIPT_NAME" ]; then
+    self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+    if [ -f "$self_dir/../$SCRIPT_NAME" ]; then
+        APP_DIR=$(CDPATH= cd -- "$self_dir/../.." && pwd)
+        ETC_DIR="${DTSU666_ETC_DIR:-$APP_DIR}"
+        VAR_DIR="${DTSU666_VAR_DIR:-$APP_DIR}"
+    else
+        echo "dtsu666-backup: cannot locate deploy/$SCRIPT_NAME" \
+             "(set DTSU666_APP_DIR)" >&2
+        exit 2
+    fi
+fi
+
+exec "${DTSU666_PYTHON:-python3}" "$APP_DIR/deploy/$SCRIPT_NAME" \
+    --app-dir "$APP_DIR" \
+    --db "${DTSU666_DB:-$VAR_DIR/dtsu666_energy.db}" \
+    --secrets "${DTSU666_SECRETS:-$ETC_DIR/secrets.ini}" \
+    --tariffs "${DTSU666_TARIFFS:-$ETC_DIR/tariffs.ini}" \
+    --dest "${DTSU666_BACKUP_DIR:-$VAR_DIR/backups}" \
+    --audit-dir "${DTSU666_AUDIT_DIR:-$VAR_DIR/audits}" \
+    "$@"

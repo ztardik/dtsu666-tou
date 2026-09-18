@@ -1,0 +1,59 @@
+# DTSU666 logger - non-secret runtime configuration.
+#
+# Install as /opt/dtsu666/etc/dtsu666.conf (mode 0644; it contains no
+# credentials).  Every key is optional: omit a key (or the whole file) and
+# the built-in default shown here is used, so behaviour is unchanged for an
+# existing installation.
+#
+# Credentials, serial port address and HEP corrections live in secrets.ini
+# and must NEVER be put in this file.
+
+[MONITORING]
+# A stored reading older than this marks the meter as "disconnected" in Home
+# Assistant and zeroes the corrected counters.  Must be comfortably larger
+# than the 60 s sampling interval.  Default: 240 (4 minutes).
+freshness_seconds = 240
+
+# Retained availability (last-will) topic: <base>/<suffix>, where <base> is
+# Electricity/dtsu666/<address>.  Home Assistant marks every entity
+# unavailable when this topic carries payload_not_available.
+availability_suffix = availability
+payload_available = online
+payload_not_available = offline
+
+# Publish version / hostname / pid / uptime on the retained /system topic,
+# so an unexpected restart is visible from Home Assistant.
+publish_runtime_info = true
+
+[WATCHDOG]
+# systemd watchdog interval in seconds (0 disables sd_notify).
+# When running under systemd this is normally taken from $WATCHDOG_USEC, so
+# you only need to set it here for manual runs.  Must match WatchdogSec= in
+# the unit for manual testing.  Default: 0.
+interval_seconds = 0
+
+[RETENTION]
+# Minute-level readings older than this are deleted at 03:00 each day.
+minute_days = 365
+# Daily aggregates older than this are deleted at 03:00 each day.
+daily_days = 3650
+
+[LOGGING]
+# DEBUG / INFO / WARNING / ERROR (journald shows these severities).
+level = INFO
+
+[DATABASE]
+# SQLite busy timeout in milliseconds; a writer that finds the database
+# briefly locked waits this long before failing.
+busy_timeout_ms = 5000
+# Extra retries (with backoff) when SQLite reports "database is locked".
+lock_retries = 5
+
+[SERIAL]
+# After this many consecutive transport failures the serial port is closed
+# and re-opened (recovers from an unplugged/re-plugged USB adapter).
+reopen_after_failures = 3
+# Delay before the first re-open attempt, in seconds; doubles on each
+# failure up to reopen_max_delay_seconds.
+reopen_delay_seconds = 2
+reopen_max_delay_seconds = 30

@@ -1,0 +1,48 @@
+#!/bin/sh
+# dtsu666-restore - verify and restore a backup bundle.
+#
+# The bundle is always verified (SHA-256 + SQLite integrity) before anything
+# is written.  Writing the database requires --force, the service must be
+# stopped, and the current database is preserved as
+# <db>.pre-restore-<timestamp>.
+#
+# Examples:
+#   dtsu666-restore --verify-only /var/backups/dtsu666-backup-X.tar.gz
+#   sudo systemctl stop dtsu666
+#   sudo dtsu666-restore /var/backups/dtsu666-backup-X.tar.gz --force
+#   sudo systemctl start dtsu666
+#
+# Environment overrides: DTSU666_APP_DIR DTSU666_ETC_DIR DTSU666_VAR_DIR
+#   DTSU666_DB DTSU666_SECRETS DTSU666_TARIFFS DTSU666_PYTHON
+
+set -eu
+
+APP_DIR="${DTSU666_APP_DIR:-/opt/dtsu666/app}"
+ETC_DIR="${DTSU666_ETC_DIR:-/opt/dtsu666/etc}"
+VAR_DIR="${DTSU666_VAR_DIR:-/opt/dtsu666/var}"
+SCRIPT_NAME="dtsu666_restore.py"
+
+if [ ! -f "$APP_DIR/deploy/$SCRIPT_NAME" ]; then
+    self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+    if [ -f "$self_dir/../$SCRIPT_NAME" ]; then
+        APP_DIR=$(CDPATH= cd -- "$self_dir/../.." && pwd)
+        ETC_DIR="${DTSU666_ETC_DIR:-$APP_DIR}"
+        VAR_DIR="${DTSU666_VAR_DIR:-$APP_DIR}"
+    else
+        echo "dtsu666-restore: cannot locate deploy/$SCRIPT_NAME" \
+             "(set DTSU666_APP_DIR)" >&2
+        exit 2
+    fi
+fi
+
+if [ "$#" -eq 0 ]; then
+    echo "usage: dtsu666-restore BUNDLE.tar.gz [--verify-only] [--force]" >&2
+    exit 2
+fi
+
+exec "${DTSU666_PYTHON:-python3}" "$APP_DIR/deploy/$SCRIPT_NAME" \
+    --app-dir "$APP_DIR" \
+    --db "${DTSU666_DB:-$VAR_DIR/dtsu666_energy.db}" \
+    --secrets "${DTSU666_SECRETS:-$ETC_DIR/secrets.ini}" \
+    --tariffs "${DTSU666_TARIFFS:-$ETC_DIR/tariffs.ini}" \
+    "$@"

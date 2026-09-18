@@ -1,0 +1,27 @@
+# CHINT DTSU666 energy logger - USB-RS485 adapter permissions.
+#
+# The service runs as the unprivileged user "dtsu666" and must never run as
+# root.  This rule puts the adapter in the "dialout" group with mode 0660 so
+# that only the logger (and administrators in "dialout") can talk to the
+# meter.  Installing it also gives the device a stable alias,
+# /dev/ttyDTSU666, which is unaffected by USB enumeration order.
+#
+# Install as /etc/udev/rules.d/99-dtsu666.rules then:
+#     sudo udevadm control --reload-rules && sudo udevadm trigger
+#
+# Verified hardware in this installation:
+#     ID_VENDOR_ID=1a86  ID_MODEL_ID=7523  (CH340 USB-serial)
+#     ID_SERIAL=1a86_USB2.0-Serial
+#
+# The rule matches any tty on that USB chipset, so replacing the adapter or
+# moving it to another port keeps working.
+
+# CH340 / CH341 style USB-RS485 adapters used by the DTSU666 installation.
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="7523", \
+    GROUP="dialout", MODE="0660", SYMLINK+="ttyDTSU666"
+
+# Generic fallback for other USB-serial bridges (FTDI / CP210x / PL2303),
+# kept separate so that a device-specific SYMLINK never collides.
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", GROUP="dialout", MODE="0660", SYMLINK+="ttyDTSU666"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="10c4", GROUP="dialout", MODE="0660", SYMLINK+="ttyDTSU666"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="067b", GROUP="dialout", MODE="0660", SYMLINK+="ttyDTSU666"

@@ -1,0 +1,32 @@
+#!/bin/sh
+# dtsu666-verify-backup - verify a backup bundle without changing anything.
+#
+# Checks every file against the SHA-256 manifest and runs PRAGMA
+# integrity_check on the bundled database.  Safe to run at any time,
+# including against a live system.
+#
+# Environment overrides: DTSU666_APP_DIR DTSU666_PYTHON
+
+set -eu
+
+APP_DIR="${DTSU666_APP_DIR:-/opt/dtsu666/app}"
+SCRIPT_NAME="dtsu666_backup.py"
+
+if [ ! -f "$APP_DIR/deploy/$SCRIPT_NAME" ]; then
+    self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+    if [ -f "$self_dir/../$SCRIPT_NAME" ]; then
+        APP_DIR=$(CDPATH= cd -- "$self_dir/../.." && pwd)
+    else
+        echo "dtsu666-verify-backup: cannot locate deploy/$SCRIPT_NAME" \
+             "(set DTSU666_APP_DIR)" >&2
+        exit 2
+    fi
+fi
+
+if [ "$#" -eq 0 ]; then
+    echo "usage: dtsu666-verify-backup BUNDLE.tar.gz [--json]" >&2
+    exit 2
+fi
+
+exec "${DTSU666_PYTHON:-python3}" "$APP_DIR/deploy/$SCRIPT_NAME" \
+    --verify-only "$@"

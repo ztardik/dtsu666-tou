@@ -1,0 +1,22 @@
+# DTSU666 logger - HEP tariff components (public price list, no credentials).
+#
+# Install as /opt/dtsu666/etc/tariffs.ini (mode 0644).  The file is re-read
+# on every cost calculation, so editing it takes effect without a restart.
+
+[COST]
+# HEP electricity price components - net EUR, VAT added on top.
+# per-kWh rates (EUR/kWh)
+energija_vt = 0.097189
+energija_nt = 0.047688
+prijenos_vt = 0.021256
+prijenos_nt = 0.008175
+distribucija_vt = 0.044446
+distribucija_nt = 0.020514
+oie_kwh = 0.013239
+
+# fixed monthly fees (EUR/month)
+opskrba_month = 0.982
+mjerno_mjesto_month = 1.983
+
+# VAT percent on the net total
+vat_percent = 13

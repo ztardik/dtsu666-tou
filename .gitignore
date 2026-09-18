@@ -1,0 +1,25 @@
+# ---- secrets and local configuration -------------------------------------
+secrets.ini
+tariffs.ini
+dtsu666.conf
+
+# ---- data ----------------------------------------------------------------
+dtsu666_energy.db*
+*.db
+*.db-wal
+*.db-shm
+
+# ---- generated artefacts -------------------------------------------------
+backups/
+audits/
+dist/
+*.tar.gz
+
+# ---- python --------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+build/
