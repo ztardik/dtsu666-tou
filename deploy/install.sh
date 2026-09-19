@@ -27,6 +27,7 @@
 #   --no-udev         do not install the udev rule
 #   --no-wrappers     do not install /usr/local/bin wrappers
 #   --enable          enable and start the service when finished
+#   --restart         restart the service after installing (pick up new code)
 #   --dry-run         show what would be done, change nothing
 #   -h, --help        this help
 
@@ -52,6 +53,7 @@ DO_SERVICE=1
 DO_UDEV=1
 DO_WRAPPERS=1
 DO_ENABLE=0
+DO_RESTART=0
 DRY_RUN=0
 
 log()  { printf '  %s\n' "$*"; }
@@ -81,6 +83,7 @@ while [ "$#" -gt 0 ]; do
         --no-udev)      DO_UDEV=0; shift ;;
         --no-wrappers)  DO_WRAPPERS=0; shift ;;
         --enable)       DO_ENABLE=1; shift ;;
+        --restart)      DO_RESTART=1; shift ;;
         --dry-run)      DRY_RUN=1; shift ;;
         -h|--help)      usage; exit 0 ;;
         *)              die "unknown option: $1 (try --help)" ;;
@@ -203,6 +206,8 @@ else
     # Remove stale copies of the installed directories first so that files
     # deleted upstream do not linger.
     rm -rf "${APP_DIR:?}/dtsu666_tou" "${APP_DIR:?}/deploy"
+    rm -f "${APP_DIR:?}/README.md" "${APP_DIR:?}/requirements.txt" \
+          "${APP_DIR:?}/pytest.ini" "${APP_DIR:?}"/test_*.py
     tar -C "$STAGE" \
         --exclude='__pycache__' --exclude='*.pyc' --exclude='*.pyo' \
         --exclude='.pytest_cache' --exclude='.venv' --exclude='backups' \
@@ -338,7 +343,7 @@ fi
 # --------------------------------------------------------------------------
 
 step "Command wrappers"
-WRAPPERS=(dtsu666-audit dtsu666-backup dtsu666-verify-backup dtsu666-restore)
+WRAPPERS=(dtsu666-audit dtsu666-backup dtsu666-verify-backup dtsu666-restore dtsu666-web)
 if [ "$DO_WRAPPERS" -eq 1 ]; then
     for w in "${WRAPPERS[@]}"; do
         run install -m 0755 -o root -g root \
@@ -464,7 +469,7 @@ cat <<EOF
   venv      : $VENV_DIR
   config    : $ETC_DIR/{secrets.ini,tariffs.ini,dtsu666.conf}
   data      : $VAR_DIR          ($SERVICE_USER:$SERVICE_USER 0750)
-  commands  : /usr/local/bin/dtsu666-{audit,backup,verify-backup,restore}
+  commands  : /usr/local/bin/dtsu666-{audit,backup,verify-backup,restore,web}
   service   : /etc/systemd/system/$SERVICE_NAME.service
   udev rule : /etc/udev/rules.d/99-dtsu666.rules
   user      : $SERVICE_USER (supplementary group dialout)
@@ -477,8 +482,18 @@ fi
 
 echo
 if [ "$DO_ENABLE" -eq 1 ]; then
-    run systemctl enable --now "$SERVICE_NAME"
-    log "service enabled and started"
+    run systemctl enable "$SERVICE_NAME"
+    log "service enabled"
+fi
+if [ "$DO_RESTART" -eq 1 ]; then
+    run systemctl restart "$SERVICE_NAME"
+    log "service restarted"
+    echo
+    echo "Check it with:  systemctl status $SERVICE_NAME"
+    echo "                journalctl -u $SERVICE_NAME -f"
+elif [ "$DO_ENABLE" -eq 1 ]; then
+    run systemctl start "$SERVICE_NAME"
+    log "service started"
     echo
     echo "Check it with:  systemctl status $SERVICE_NAME"
     echo "                journalctl -u $SERVICE_NAME -f"

@@ -185,6 +185,28 @@ entities follow the meter's register layout.
 | `test_deploy_tools.py` | 28 | audit / backup / restore tools |
 | `test_commissioning.py` | 18 | commissioning and lifecycle |
 | `test_scheduler.py` | 1 | wall-clock polling loop |
+| `test_web.py` | 5 | read-only web status page |
+
+## Web status page
+
+An on-demand, read-only status page (standard library only, no new
+dependencies) is available:
+
+```bash
+.venv/bin/python -m dtsu666_tou.web            # http://127.0.0.1:8080/
+```
+
+It opens the SQLite database read-only, so it never interferes with the
+running service and still works while the service is stopped.  It shows the
+operational state, last reading freshness, meter instances, energy, period
+summaries (VT/NT/corrected), cost (when `tariffs.ini` is present), HEP
+reference anchors, manual corrections and the most recent readings.  A JSON
+endpoint (`/api/status`) and the HTML page (`/`) are served; the page
+auto-refreshes.  Stop it with Ctrl-C.
+
+Flags: `--db`, `--config`/`--secrets`, `--tariffs`, `--runtime-config`,
+`--host`, `--port`, `--open`.  It binds to `127.0.0.1` by default and never
+reads or displays credentials.
 
 ## Deployment
 
@@ -200,6 +222,7 @@ Operational commands (installed by `deploy/install.sh`):
 | `dtsu666-backup` | consistent, hashed backup bundle of database + config + code |
 | `dtsu666-verify-backup` | verify a bundle without touching the system |
 | `dtsu666-restore` | verified restore, with safety copy and stale-WAL handling |
+| `dtsu666-web` | on-demand, read-only web status page |
 
 Reliability features when run as a service: MQTT last will + per-entity
 availability, a systemd `Type=notify` watchdog, a supervised restart loop,

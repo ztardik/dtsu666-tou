@@ -1,0 +1,38 @@
+#!/bin/sh
+# dtsu666-web - on-demand, read-only web status page.
+#
+# Starts a local HTTP server that renders the logger status from the SQLite
+# database.  Read-only and standard library only; stop it with Ctrl-C.
+#
+# Environment overrides:
+#   DTSU666_APP_DIR DTSU666_ETC_DIR DTSU666_VAR_DIR DTSU666_DB
+#   DTSU666_SECRETS DTSU666_TARIFFS DTSU666_RUNTIME_CONF DTSU666_PYTHON
+#   DTSU666_WEB_HOST DTSU666_WEB_PORT
+
+set -eu
+
+APP_DIR="${DTSU666_APP_DIR:-/opt/dtsu666/app}"
+ETC_DIR="${DTSU666_ETC_DIR:-/opt/dtsu666/etc}"
+VAR_DIR="${DTSU666_VAR_DIR:-/opt/dtsu666/var}"
+
+if [ ! -f "$APP_DIR/dtsu666_tou/web.py" ]; then
+    # Running straight from a source checkout (deploy/bin/dtsu666-web).
+    self_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+    APP_DIR=$(CDPATH= cd -- "$self_dir/../.." && pwd)
+    if [ ! -f "$APP_DIR/dtsu666_tou/web.py" ]; then
+        echo "dtsu666-web: cannot locate dtsu666_tou/web.py (set DTSU666_APP_DIR)" >&2
+        exit 2
+    fi
+    ETC_DIR="${DTSU666_ETC_DIR:-$APP_DIR}"
+    VAR_DIR="${DTSU666_VAR_DIR:-$APP_DIR}"
+fi
+
+export PYTHONPATH="$APP_DIR${PYTHONPATH:+:$PYTHONPATH}"
+exec "${DTSU666_PYTHON:-python3}" -m dtsu666_tou.web \
+    --db "${DTSU666_DB:-$VAR_DIR/dtsu666_energy.db}" \
+    --config "${DTSU666_SECRETS:-$ETC_DIR/secrets.ini}" \
+    --tariffs "${DTSU666_TARIFFS:-$ETC_DIR/tariffs.ini}" \
+    --runtime-config "${DTSU666_RUNTIME_CONF:-$ETC_DIR/dtsu666.conf}" \
+    --host "${DTSU666_WEB_HOST:-127.0.0.1}" \
+    --port "${DTSU666_WEB_PORT:-8080}" \
+    "$@"
