@@ -13,6 +13,7 @@ from .config import (
     ALLOCATION_BASELINE,
     ALLOCATION_MEASURED,
     ALLOCATION_ESTIMATED,
+    ALLOCATION_RESET,
     ESTIMATED_THRESHOLD,
 )
 from .time_utils import now_local, _parse_timestamp
@@ -253,8 +254,9 @@ def record_energy(db, meter, timestamp, absolute_kwh):
         prev_abs = previous["absolute_kwh"]
         prev_ts = _parse_timestamp(previous["timestamp"])
         delta = absolute_kwh - prev_abs
+        reset = delta < 0
 
-        if delta < 0:
+        if reset:
             print(
                 f"WARNING: ImpEp decreased on {meter['instance_name']}: "
                 f"{prev_abs:.3f} -> {absolute_kwh:.3f} kWh"
@@ -267,7 +269,10 @@ def record_energy(db, meter, timestamp, absolute_kwh):
         )
         tariff = current_tariff(timestamp)
 
-        if delta <= 0:
+        if reset:
+            vt = nt = 0.0
+            method = ALLOCATION_RESET
+        elif delta <= 0:
             vt = nt = 0.0
             method = ALLOCATION_MEASURED if same_tariff else ALLOCATION_ESTIMATED
         elif elapsed <= ESTIMATED_THRESHOLD and same_tariff:
@@ -293,12 +298,19 @@ def record_energy(db, meter, timestamp, absolute_kwh):
         (meter["id"], day_str),
     ).fetchone()
 
+    # The daily "latest counter" must never regress, even when the meter
+    # counter itself decreased (a reset is recorded with a zero delta above,
+    # but its raw counter is lower).  Clamp it to the highest value seen so
+    # far so ``energy_daily.absolute_kwh`` stays monotonic.
     if existing is None:
+        daily_abs = absolute_kwh
+        if previous is not None:
+            daily_abs = max(daily_abs, previous["absolute_kwh"])
         db.execute(
             "INSERT INTO energy_daily "
             "(meter_id, date, absolute_kwh, total_kwh, vt_kwh, nt_kwh) "
             "VALUES (?, ?, ?, ?, ?, ?)",
-            (meter["id"], day_str, absolute_kwh, delta, vt, nt),
+            (meter["id"], day_str, daily_abs, delta, vt, nt),
         )
     else:
         db.execute(
@@ -306,7 +318,8 @@ def record_energy(db, meter, timestamp, absolute_kwh):
             "absolute_kwh = ?, total_kwh = total_kwh + ?, "
             "vt_kwh = vt_kwh + ?, nt_kwh = nt_kwh + ? "
             "WHERE meter_id = ? AND date = ?",
-            (absolute_kwh, delta, vt, nt, meter["id"], day_str),
+            (max(existing["absolute_kwh"], absolute_kwh),
+             delta, vt, nt, meter["id"], day_str),
         )
     db.commit()
 

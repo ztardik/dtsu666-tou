@@ -118,13 +118,13 @@ def run_scheduler(db, modbus, meter, *,
     print("  Tariff      : HEP Bijeli VT / NT (DST-aware)")
     print()
 
-    # ---- wall-clock align ----# ---- wall-clock align -----------------------------------------
+    # ---- wall-clock align -----------------------------------------
     target = next_second_boundary(now_fn())
     while runtime.running:
         remaining = local_to_epoch(target) - time.time()
         if remaining <= 0:
             break
-        time.sleep(min(remaining, 0.2))
+        sleep_fn(min(remaining, 0.2))
 
     # ---- state ------------------------------------------------
     was_connected = False          # unknown until first successful read

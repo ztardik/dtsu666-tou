@@ -46,6 +46,7 @@ class TestConstants:
         assert config.ALLOCATION_BASELINE == "baseline"
         assert config.ALLOCATION_MEASURED == "measured"
         assert config.ALLOCATION_ESTIMATED == "estimated"
+        assert config.ALLOCATION_RESET == "reset"
         assert config.HA_STATUS_TOPIC == "homeassistant/status"
         assert str(config.LOCAL_TZ) == "Europe/Zagreb"
 
@@ -315,6 +316,12 @@ class TestRecordEnergy:
             assert a2["delta_kwh"] == 0.0                # decrease clamped to 0
             assert a2["vt_kwh"] == 0.0
             assert a2["nt_kwh"] == 0.0
+            assert a2["method"] == "reset"
+            # daily "latest counter" must not regress after a decrease
+            day_row = db.execute(
+                "SELECT absolute_kwh FROM energy_daily WHERE date=?",
+                (gap.date().isoformat(),)).fetchone()
+            assert day_row["absolute_kwh"] == 50001.5
         finally:
             db.close(); os.unlink(path)
 

@@ -75,7 +75,9 @@ def tariff_for_date(tariffs, d):
     for t in tariffs:
         if t["valid_from"] <= d:
             best = t
-    return best or tariffs[0] if tariffs else {}
+    if best is not None:
+        return best
+    return tariffs[0] if tariffs else {}
 
 
 def calculate_cost(vt_kwh, nt_kwh, total_kwh, tariff, include_fixed):

@@ -32,6 +32,7 @@ ESTIMATED_THRESHOLD = 120.0            # seconds - below this + same
 ALLOCATION_BASELINE  = "baseline"
 ALLOCATION_MEASURED  = "measured"
 ALLOCATION_ESTIMATED = "estimated"
+ALLOCATION_RESET     = "reset"
 
 HA_STATUS_TOPIC = "homeassistant/status"
 
