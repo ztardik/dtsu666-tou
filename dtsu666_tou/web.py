@@ -36,9 +36,25 @@ __all__ = ["open_readonly", "build_status", "serve", "main"]
 # ============================================================
 
 def open_readonly(path):
-    """Open *path* read-only.  Raises ``sqlite3.Error`` when unavailable."""
-    uri = f"file:{os.path.abspath(path)}?mode=ro"
-    db = sqlite3.connect(uri, uri=True)
+    """Open *path* read-only.  Raises ``sqlite3.Error`` when unavailable.
+
+    Tries ``mode=ro`` first so a live WAL database is read correctly,
+    including any frames not yet checkpointed from the ``-wal`` file.  When
+    that fails, falls back to ``immutable=1``, which needs no ``-shm`` file
+    and therefore works on a WAL database that is not currently being written
+    to even when the process lacks write permission on its directory (SQLite
+    otherwise refuses to create the shared-memory index).
+
+    ``sqlite3.connect`` opens lazily, so a harmless PRAGMA forces the file
+    open here to surface errors at this point rather than on the first query.
+    """
+    abspath = os.path.abspath(path)
+    try:
+        db = sqlite3.connect(f"file:{abspath}?mode=ro", uri=True)
+        db.execute("PRAGMA user_version")
+    except sqlite3.Error:
+        db = sqlite3.connect(f"file:{abspath}?mode=ro&immutable=1", uri=True)
+        db.execute("PRAGMA user_version")
     db.row_factory = sqlite3.Row
     return db
 
@@ -206,7 +222,9 @@ _PERIOD_TITLES = {
 def render_html(status):
     """Return the full status page as an HTML document."""
     if "error" in status:
-        return _page(f"<p class='bad'>{_esc(status['error'])}</p>")
+        detail = f"<p class='sub'>{_esc(status.get('detail'))}</p>" \
+            if status.get("detail") else ""
+        return _page(f"<p class='bad'>{_esc(status['error'])}</p>{detail}")
 
     op = status["operational"] or {}
     state = op.get("status", "unknown")

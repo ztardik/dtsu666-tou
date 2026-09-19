@@ -85,6 +85,25 @@ def test_open_readonly_missing_db_raises(tmp_path):
         raise AssertionError("expected missing database to raise")
 
 
+def test_open_readonly_wal_without_write_permission(tmp_path):
+    # A cleanly closed WAL database has no -shm file, so a read-only open
+    # from a directory the process cannot write to falls back to immutable.
+    import os
+    db_path = tmp_path / "dtsu666_energy.db"
+    _seed_db(db_path)
+    os.chmod(tmp_path, 0o555)
+    try:
+        db = web.open_readonly(str(db_path))
+        try:
+            row = db.execute(
+                "SELECT COUNT(*) AS n FROM readings").fetchone()
+            assert row["n"] == 2
+        finally:
+            db.close()
+    finally:
+        os.chmod(tmp_path, 0o755)
+
+
 def _start_server(tmp_path, db_path):
     server = web._Server(("127.0.0.1", 0), str(db_path),
                          str(tmp_path / "secrets.ini"),

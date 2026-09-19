@@ -175,7 +175,7 @@ entities follow the meter's register layout.
 
 ```bash
 .venv/bin/pip install pytest
-.venv/bin/python -m pytest -q          # 125 tests, temp files only
+.venv/bin/python -m pytest -q          # 131 tests, temp files only
 ```
 
 | file | tests | covers |
@@ -185,7 +185,7 @@ entities follow the meter's register layout.
 | `test_deploy_tools.py` | 28 | audit / backup / restore tools |
 | `test_commissioning.py` | 18 | commissioning and lifecycle |
 | `test_scheduler.py` | 1 | wall-clock polling loop |
-| `test_web.py` | 5 | read-only web status page |
+| `test_web.py` | 6 | read-only web status page |
 
 ## Web status page
 
@@ -197,12 +197,17 @@ dependencies) is available:
 ```
 
 It opens the SQLite database read-only, so it never interferes with the
-running service and still works while the service is stopped.  It shows the
-operational state, last reading freshness, meter instances, energy, period
-summaries (VT/NT/corrected), cost (when `tariffs.ini` is present), HEP
-reference anchors, manual corrections and the most recent readings.  A JSON
-endpoint (`/api/status`) and the HTML page (`/`) are served; the page
-auto-refreshes.  Stop it with Ctrl-C.
+running service and still works while the service is stopped.  A live WAL
+database is read through its `-wal` file, and a fallback path reads a stopped
+database even from a directory the current user cannot write to.  On a
+production install, run it as the `dtsu666` user, a member of that group, or
+via `sudo` so it can read `dtsu666_energy.db`; the page shows the underlying
+SQLite error when the database cannot be opened.  It shows the operational
+state, last reading freshness, meter instances, energy, period summaries
+(VT/NT/corrected), cost (when `tariffs.ini` is present), HEP reference
+anchors, manual corrections and the most recent readings.  A JSON endpoint
+(`/api/status`) and the HTML page (`/`) are served; the page auto-refreshes.
+Stop it with Ctrl-C.
 
 Flags: `--db`, `--config`/`--secrets`, `--tariffs`, `--runtime-config`,
 `--host`, `--port`, `--open`.  It binds to `127.0.0.1` by default and never
