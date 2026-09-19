@@ -104,6 +104,29 @@ def test_open_readonly_wal_without_write_permission(tmp_path):
         os.chmod(tmp_path, 0o755)
 
 
+def test_open_readonly_reads_live_wal(tmp_path):
+    # A writer holding the database open in WAL mode must be read through
+    # its -wal file; a fallback to immutable would silently miss the
+    # uncheckpointed row and report stale (disconnected) data.
+    db_path = str(tmp_path / "live.db")
+    writer = sqlite3.connect(db_path)
+    writer.execute("PRAGMA journal_mode=WAL")
+    writer.execute("CREATE TABLE readings (id INTEGER PRIMARY KEY, ts TEXT)")
+    writer.execute("INSERT INTO readings (ts) VALUES ('old')")
+    writer.commit()
+    writer.execute("INSERT INTO readings (ts) VALUES ('fresh')")
+    writer.commit()
+    try:
+        db = web.open_readonly(db_path)
+        try:
+            rows = db.execute("SELECT ts FROM readings ORDER BY id").fetchall()
+            assert [r["ts"] for r in rows] == ["old", "fresh"]
+        finally:
+            db.close()
+    finally:
+        writer.close()
+
+
 def _start_server(tmp_path, db_path):
     server = web._Server(("127.0.0.1", 0), str(db_path),
                          str(tmp_path / "secrets.ini"),

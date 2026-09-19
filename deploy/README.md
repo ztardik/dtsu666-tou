@@ -27,7 +27,8 @@ deploy/
 | `/opt/dtsu666/etc/secrets.ini` | credentials, Modbus address, HEP corrections | `root:dtsu666` 0640 |
 | `/opt/dtsu666/etc/tariffs.ini` | HEP price components | `root:root` 0644 |
 | `/opt/dtsu666/etc/dtsu666.conf` | non-secret tuning | `root:root` 0644 |
-| `/opt/dtsu666/var/dtsu666_energy.db` | the database | `dtsu666:dtsu666` 0640 |
+| `/opt/dtsu666/var/dtsu666_energy.db` | the database (credential-free, world-readable) | `dtsu666:dtsu666` 0644 |
+| `/opt/dtsu666/var` | data directory (traversable for the web page) | `dtsu666:dtsu666` 0755 |
 | `/opt/dtsu666/var/audits` | audit reports | `dtsu666:dtsu666` 0750 |
 | `/opt/dtsu666/var/backups` | backup bundles | `dtsu666:dtsu666` 0750 |
 | `/usr/local/bin/dtsu666-*` | command wrappers | `root:root` 0755 |
@@ -243,8 +244,11 @@ wholesale, so files deleted upstream do not linger.
 ## Security notes
 
 * Only `secrets.ini` holds credentials; it is `0640 root:dtsu666`.
-  `dtsu666.conf`, `tariffs.ini` and every report are credential-free — the
-  audit and backup tools actively redact them.
+  `dtsu666.conf`, `tariffs.ini`, the database and every report are
+  credential-free — the audit and backup tools actively redact them.  The
+  database and its `-wal`/`-shm` sidecars are world-readable (`0644`) so
+  `dtsu666-web` runs without sudo; `install.sh` keeps them that way (a
+  service restart recreates the sidecars with the database's mode).
 * Backup bundles contain `secrets.ini` (so they are self-contained) and are
   therefore created mode 0600.  Use `--no-secrets` for off-site copies.
 * The service never runs as root: `NoNewPrivileges`, `ProtectSystem=strict`,
@@ -257,7 +261,7 @@ wholesale, so files deleted upstream do not linger.
 
 ```bash
 cd <repo>
-.venv/bin/python -m pytest -q          # 125 tests, temp files only
+.venv/bin/python -m pytest -q          # 131 tests, temp files only
 .venv/bin/python -m dtsu666_tou --test     # end-to-end smoke test
 ./deploy/install.sh --dry-run          # rehearse an install
 ./deploy/build-bundle.sh --verify      # rehearse a release

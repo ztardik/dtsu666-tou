@@ -179,9 +179,13 @@ fi
 run install -d -m 0755 -o root -g root "$PREFIX"
 run install -d -m 0755 -o root -g root "$APP_DIR"
 run install -d -m 0755 -o root -g root "$ETC_DIR"
-run install -d -m 0750 -o "$SERVICE_USER" -g "$SERVICE_USER" "$VAR_DIR"
+run install -d -m 0755 -o "$SERVICE_USER" -g "$SERVICE_USER" "$VAR_DIR"
 run install -d -m 0750 -o "$SERVICE_USER" -g "$SERVICE_USER" "$AUDIT_DIR"
 run install -d -m 0750 -o "$SERVICE_USER" -g "$SERVICE_USER" "$BACKUP_DIR"
+# var/ holds no credentials; keep it traversable so the read-only web status
+# page can be run by any local user without sudo.  audits/ and backups/ stay
+# 0750 (backups may contain secrets.ini).
+run chmod 0755 "$VAR_DIR"
 log "created $PREFIX/{app,etc,var,var/audits,var/backups}"
 
 # --------------------------------------------------------------------------
@@ -331,12 +335,21 @@ dst.close()
 src.close()
 print("  seeded a consistent snapshot")
 PYEOF
-        run chown "$SERVICE_USER:$SERVICE_USER" "$DB_PATH"
-        run chmod 0640 "$DB_PATH"
     fi
 else
     log "no database to seed - it will be created on first start"
 fi
+
+# SQLite creates the -wal/-shm companions with the database's mode, so keep
+# the database and its sidecars world-readable: the read-only web page must
+# read -wal/-shm to see live data without sudo.
+for suffix in "" "-wal" "-shm" "-journal"; do
+    f="$DB_PATH$suffix"
+    if [ -f "$f" ]; then
+        run chown "$SERVICE_USER:$SERVICE_USER" "$f"
+        run chmod 0644 "$f"
+    fi
+done
 
 # --------------------------------------------------------------------------
 # 8. command wrappers

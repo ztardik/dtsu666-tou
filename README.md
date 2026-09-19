@@ -199,9 +199,9 @@ dependencies) is available:
 It opens the SQLite database read-only, so it never interferes with the
 running service and still works while the service is stopped.  A live WAL
 database is read through its `-wal` file, and a fallback path reads a stopped
-database even from a directory the current user cannot write to.  On a
-production install, run it as the `dtsu666` user, a member of that group, or
-via `sudo` so it can read `dtsu666_energy.db`; the page shows the underlying
+database even from a directory the current user cannot write to.  The
+database is credential-free and world-readable on a production install, so
+the page runs as any local user without `sudo`; it shows the underlying
 SQLite error when the database cannot be opened.  It shows the operational
 state, last reading freshness, meter instances, energy, period summaries
 (VT/NT/corrected), cost (when `tariffs.ini` is present), HEP reference

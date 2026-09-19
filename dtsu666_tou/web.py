@@ -40,10 +40,13 @@ def open_readonly(path):
 
     Tries ``mode=ro`` first so a live WAL database is read correctly,
     including any frames not yet checkpointed from the ``-wal`` file.  When
-    that fails, falls back to ``immutable=1``, which needs no ``-shm`` file
-    and therefore works on a WAL database that is not currently being written
-    to even when the process lacks write permission on its directory (SQLite
-    otherwise refuses to create the shared-memory index).
+    that fails and there is no ``-wal`` file (a cleanly closed database),
+    falls back to ``immutable=1``, which needs no ``-shm`` file and therefore
+    works on a WAL database that is not currently being written to even when
+    the process lacks write permission on its directory (SQLite otherwise
+    refuses to create the shared-memory index).  A live ``-wal`` file is
+    never read via ``immutable=1``: that would silently show stale,
+    checkpointed data for a running service.
 
     ``sqlite3.connect`` opens lazily, so a harmless PRAGMA forces the file
     open here to surface errors at this point rather than on the first query.
@@ -53,6 +56,8 @@ def open_readonly(path):
         db = sqlite3.connect(f"file:{abspath}?mode=ro", uri=True)
         db.execute("PRAGMA user_version")
     except sqlite3.Error:
+        if os.path.exists(abspath + "-wal"):
+            raise
         db = sqlite3.connect(f"file:{abspath}?mode=ro&immutable=1", uri=True)
         db.execute("PRAGMA user_version")
     db.row_factory = sqlite3.Row

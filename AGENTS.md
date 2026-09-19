@@ -91,7 +91,7 @@ python3 -m venv .venv
 # web status page
 .venv/bin/python -m dtsu666_tou.web             # http://127.0.0.1:8080/
 
-# tests (125 tests, temp files only)
+# tests (132 tests, temp files only)
 .venv/bin/python -m pytest -q
 .venv/bin/python -m pytest test_dtsu666_tou.py -v
 
@@ -106,7 +106,7 @@ python3 -m venv .venv
 `pytest.ini` sets `testpaths = .` only; there is no lint/typecheck
 configured. Test files: `test_dtsu666_tou.py` (42), `test_hardening.py`
 (36), `test_deploy_tools.py` (28), `test_commissioning.py` (18),
-`test_scheduler.py` (1), `test_web.py` (5).
+`test_scheduler.py` (1), `test_web.py` (7).
 
 ## Configuration files
 
@@ -145,6 +145,11 @@ sets `WorkingDirectory` accordingly):
 - The DB uses WAL, `synchronous=NORMAL`, `foreign_keys=ON`, and a busy
   timeout with retry (`database.retry_on_locked`). Losing a minute's reading
   to `SQLITE_BUSY` is treated as unacceptable.
+- The web status page (`web.open_readonly`) reads the live `-wal` file; it
+  falls back to `immutable=1` only when there is no `-wal` (a cleanly
+  stopped DB), never for a running service. On install, the DB and its
+  `-wal`/`-shm` sidecars are `0644` (world-readable) so `dtsu666-web` runs
+  without sudo.
 
 ## Code conventions
 
@@ -171,7 +176,7 @@ uses `Type=notify` + a watchdog; `watchdog.py` talks `sd_notify`. See
 
 ## Before committing
 
-- Run `.venv/bin/python -m pytest -q` and confirm 125 passing.
+- Run `.venv/bin/python -m pytest -q` and confirm 132 passing.
 - If you touched the CLI, run `.venv/bin/python -m dtsu666_tou --test`.
 - Re-read the module map above to confirm you did not break the pure/impure
   import split.
